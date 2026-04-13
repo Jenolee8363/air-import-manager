@@ -501,11 +501,36 @@ function dueBadge(d){
 }
 function isDone(s){ return (s['완료']||s['Locked']||'').toString().trim()==='완료'; }
 
+// ── 대시보드 정렬 상태 ──
+let dashSort={col:'',dir:'asc'};
+function sortDash(col){
+  if(dashSort.col===col){
+    if(dashSort.dir==='asc') dashSort.dir='desc';
+    else if(dashSort.dir==='desc'){dashSort.col='';dashSort.dir='asc';} // 3번째: 원상복귀
+  } else {dashSort.col=col;dashSort.dir='asc';}
+  renderDashboard();
+}
+function sortIcon(col){
+  if(dashSort.col!==col) return '<span style="color:#333;margin-left:3px">⇅</span>';
+  return dashSort.dir==='asc'?'<span style="color:#4fc3f7;margin-left:3px">↑</span>':'<span style="color:#4fc3f7;margin-left:3px">↓</span>';
+}
+
 // ── 대시보드 ──
 function renderDashboard(){
-  const ships=curData().shipments.filter(s=>!isDone(s));
+  let ships=curData().shipments.filter(s=>!isDone(s));
   const today=new Date(),in7=new Date();in7.setDate(today.getDate()+7);
   const isAws=mode==='aws';
+  // 정렬
+  if(dashSort.col){
+    ships=[...ships].sort((a,b)=>{
+      let va=a[dashSort.col]||'', vb=b[dashSort.col]||'';
+      // 날짜 컬럼은 parseETA로 비교
+      if(['ETA','ETD','DueDate'].includes(dashSort.col)){
+        va=parseETA(va)||'9999'; vb=parseETA(vb)||'9999';
+      }
+      return dashSort.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    });
+  }
   const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const cards=[
     {label:'전체 화물',val:ships.length,cls:'c-purple'},
@@ -528,8 +553,21 @@ function renderDashboard(){
       <td>${dueBadge(s.DueDate)}</td><td>${billingBadge(s.Billing)}</td></tr>`;
   }).join('');
   // 대시보드 헤더에 DeliveryDate 추가
-  const awsH=isAws?'<th>Load ID</th><th>ETD</th>':'';
-  document.getElementById('dash-thead').innerHTML=`<tr><th>Customer</th><th>Consignee</th><th>HAWB</th><th>MAWB</th>${awsH}<th>Route</th><th>Tonnage</th><th>ETA</th><th>Status (K)</th><th>Delivery (L)</th><th>DUE DATE</th><th>BILLING</th></tr>`;
+  const awsH=isAws?`<th style="cursor:pointer" onclick="sortDash('LoadID')">Load ID${sortIcon('LoadID')}</th><th style="cursor:pointer" onclick="sortDash('ETD')">ETD${sortIcon('ETD')}</th>`:'';
+  document.getElementById('dash-thead').innerHTML=`<tr>
+    <th style="cursor:pointer" onclick="sortDash('Customer')">Customer${sortIcon('Customer')}</th>
+    <th style="cursor:pointer" onclick="sortDash('Consignee')">Consignee${sortIcon('Consignee')}</th>
+    <th style="cursor:pointer" onclick="sortDash('HAWB')">HAWB${sortIcon('HAWB')}</th>
+    <th style="cursor:pointer" onclick="sortDash('MAWB')">MAWB${sortIcon('MAWB')}</th>
+    ${awsH}
+    <th style="cursor:pointer" onclick="sortDash('Route')">Route${sortIcon('Route')}</th>
+    <th style="cursor:pointer" onclick="sortDash('Tonnage')">Tonnage${sortIcon('Tonnage')}</th>
+    <th style="cursor:pointer" onclick="sortDash('ETA')">ETA${sortIcon('ETA')}</th>
+    <th style="cursor:pointer" onclick="sortDash('RemarkStatus')">Status (K)${sortIcon('RemarkStatus')}</th>
+    <th>Delivery (L)</th>
+    <th style="cursor:pointer" onclick="sortDash('DueDate')">DUE DATE${sortIcon('DueDate')}</th>
+    <th style="cursor:pointer" onclick="sortDash('Billing')">BILLING${sortIcon('Billing')}</th>
+  </tr>`;
 }
 
 // ── 화물 리스트 ──
@@ -678,9 +716,19 @@ function renderCalendar(){
   for(let d=1;d<=last;d++){
     const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
     const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    let evts=ships.filter(s=>parseETA(s.ETA)===ds).map(s=>`<div class="cal-ev ev-eta" title="${s.Consignee||''}">${(s.HAWB||s.MAWB||'').slice(-6)} ${s.ETA?s.ETA.split(' ')[1]||'':''}</div>`).join('');
-    evts+=ships.filter(s=>parseETA(s.ETD)===ds).map(s=>`<div class="cal-ev ev-etd" title="${s.Consignee||''}">↑${(s.HAWB||s.MAWB||'').slice(-6)}</div>`).join('');
-    evts+=ships.filter(s=>parseETA(s.DueDate)===ds).map(s=>`<div class="cal-ev ev-due" title="${s.Consignee||''}">D:${(s.Consignee||'').slice(0,5)}</div>`).join('');
+    let evts=ships.filter(s=>parseETA(s.ETA)===ds).map(s=>{
+      const hawb=s.HAWB||s.MAWB||'';
+      const time=s.ETA?s.ETA.split(' ')[1]||'':'';
+      return `<div class="cal-ev ev-eta" title="${s.Consignee||''}">${hawb}${time?' / '+time:''}</div>`;
+    }).join('');
+    evts+=ships.filter(s=>parseETA(s.ETD)===ds).map(s=>{
+      const hawb=s.HAWB||s.MAWB||'';
+      return `<div class="cal-ev ev-etd" title="${s.Consignee||''}">↑${hawb}</div>`;
+    }).join('');
+    evts+=ships.filter(s=>parseETA(s.DueDate)===ds).map(s=>{
+      const hawb=s.HAWB||s.MAWB||'';
+      return `<div class="cal-ev ev-due" title="${s.Consignee||''}">${hawb}</div>`;
+    }).join('');
     cells+=`<div class="cal-cell${isToday?' today':''}"><div class="cal-day-num">${d}</div>${evts}</div>`;
   }
   const rem=(7-(first+last)%7)%7;
