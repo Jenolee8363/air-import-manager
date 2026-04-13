@@ -506,9 +506,10 @@ function renderDashboard(){
   const ships=curData().shipments.filter(s=>!isDone(s));
   const today=new Date(),in7=new Date();in7.setDate(today.getDate()+7);
   const isAws=mode==='aws';
+  const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const cards=[
     {label:'전체 화물',val:ships.length,cls:'c-purple'},
-    {label:'입항 예정 (7일)',val:ships.filter(s=>{const e=new Date(s.ETA);return e>=today&&e<=in7;}).length,cls:'c-blue'},
+    {label:`오늘 입항 (${todayStr})`,val:ships.filter(s=>parseETA(s.ETA)===todayStr).length,cls:'c-blue'},
     {label:'AN 완료',val:ships.filter(s=>(s.RemarkStatus||'').includes('AN 완료')).length,cls:'c-green'},
     {label:'Billing 대기',val:ships.filter(s=>!s.Billing||!s.Billing.trim()).length,cls:'c-amber'},
     {label:'DUE DATE 임박',val:ships.filter(s=>{if(!s.DueDate)return false;const d=(new Date(s.DueDate)-today)/86400000;return d>=0&&d<=3;}).length,cls:'c-red'},
