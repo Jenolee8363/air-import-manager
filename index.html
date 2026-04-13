@@ -498,4 +498,333 @@ function dueBadge(d){
 
 // ── 대시보드 정렬 ──
 function sortDash(col){
-  if(dashSort.col===c
+  if(dashSort.col===col){
+    if(dashSort.dir==='asc')dashSort.dir='desc';
+    else{dashSort.col='';dashSort.dir='asc';}
+  }else{dashSort.col=col;dashSort.dir='asc';}
+  renderDashboard();
+}
+function sortIcon(col){
+  if(dashSort.col!==col)return'<span style="color:#333;margin-left:3px">⇅</span>';
+  return dashSort.dir==='asc'?'<span style="color:#4fc3f7;margin-left:3px">↑</span>':'<span style="color:#4fc3f7;margin-left:3px">↓</span>';
+}
+
+// ── 대시보드 ──
+function renderDashboard(){
+  let ships=curData().shipments.filter(s=>!isDone(s));
+  const today=new Date();
+  const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const isAws=mode==='aws';
+  if(dashSort.col){
+    ships=[...ships].sort((a,b)=>{
+      let va=a[dashSort.col]||'',vb=b[dashSort.col]||'';
+      if(['ETA','ETD','DueDate'].includes(dashSort.col)){va=parseETA(va)||'9999';vb=parseETA(vb)||'9999';}
+      return dashSort.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    });
+  }
+  const cards=[
+    {label:'전체 화물',val:ships.length,cls:'c-purple'},
+    {label:`오늘 입항 (${todayStr})`,val:ships.filter(s=>parseETA(s.ETA)===todayStr).length,cls:'c-blue'},
+    {label:'AN 완료',val:ships.filter(s=>(s.RemarkStatus||'').includes('AN 완료')).length,cls:'c-green'},
+    {label:'Billing 대기',val:ships.filter(s=>!s.Billing||!s.Billing.trim()).length,cls:'c-amber'},
+    {label:'DUE DATE 임박',val:ships.filter(s=>{if(!s.DueDate)return false;const d=(new Date(parseETA(s.DueDate))-today)/86400000;return d>=0&&d<=3;}).length,cls:'c-red'},
+    {label:'운송 완료',val:ships.filter(s=>(s.RemarkStatus||'').includes('운송완료')).length,cls:'c-teal'},
+  ];
+  document.getElementById('dash-cards').innerHTML=cards.map(c=>`<div class="scard"><div class="scard-label">${c.label}</div><div class="scard-val ${c.cls}">${c.val}</div></div>`).join('');
+  const awsH=isAws?`<th style="cursor:pointer" onclick="sortDash('LoadID')">Load ID${sortIcon('LoadID')}</th><th style="cursor:pointer" onclick="sortDash('ETD')">ETD${sortIcon('ETD')}</th>`:'';
+  document.getElementById('dash-thead').innerHTML=`<tr>
+    <th style="cursor:pointer" onclick="sortDash('Customer')">Customer${sortIcon('Customer')}</th>
+    <th style="cursor:pointer" onclick="sortDash('Consignee')">Consignee${sortIcon('Consignee')}</th>
+    <th style="cursor:pointer" onclick="sortDash('HAWB')">HAWB${sortIcon('HAWB')}</th>
+    <th style="cursor:pointer" onclick="sortDash('MAWB')">MAWB${sortIcon('MAWB')}</th>
+    ${awsH}
+    <th style="cursor:pointer" onclick="sortDash('Route')">Route${sortIcon('Route')}</th>
+    <th style="cursor:pointer" onclick="sortDash('Tonnage')">Tonnage${sortIcon('Tonnage')}</th>
+    <th style="cursor:pointer" onclick="sortDash('ETA')">ETA${sortIcon('ETA')}</th>
+    <th style="cursor:pointer" onclick="sortDash('RemarkStatus')">Status (K)${sortIcon('RemarkStatus')}</th>
+    <th>Delivery (L)</th>
+    <th style="cursor:pointer" onclick="sortDash('DueDate')">DUE DATE${sortIcon('DueDate')}</th>
+    <th style="cursor:pointer" onclick="sortDash('Billing')">BILLING${sortIcon('Billing')}</th>
+    <th>메모</th>
+  </tr>`;
+  document.getElementById('dash-tbody').innerHTML=ships.map(s=>{
+    const awsTd=isAws?`<td style="color:#555">${s.LoadID||'—'}</td><td>${s.ETD||'—'}</td>`:'';
+    const memoCount=(memos[s.id]||[]).length;
+    return`<tr>
+      <td>${s.Customer||'—'}</td><td class="td-wrap">${s.Consignee||'—'}</td>
+      <td style="font-weight:600;color:#4fc3f7">${s.HAWB||'—'}</td><td style="color:#555;font-size:11px">${s.MAWB||'—'}</td>
+      ${awsTd}<td>${s.Route||'—'}</td><td>${s.Tonnage||'—'}</td><td>${s.ETA||'—'}</td>
+      <td>${statusBadge(s.RemarkStatus)}</td>
+      <td style="color:#ffcc80;font-size:12px">${s.DeliveryDate||'—'}</td>
+      <td>${dueBadge(s.DueDate)}</td><td>${billingBadge(s.Billing)}</td>
+      <td><button class="btn btn-sm" onclick="openModal('${s.id}')" style="font-size:11px">📝${memoCount>0?` (${memoCount})`:''}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 화물 리스트 ──
+function renderShipments(){
+  const showDone=document.getElementById('show-done').checked;
+  const q=document.getElementById('f-q').value.toLowerCase();
+  const rt=document.getElementById('f-route').value;
+  const st=document.getElementById('f-status').value;
+  const bl=document.getElementById('f-billing').value;
+  const isAws=mode==='aws';
+  const list=curData().shipments.filter(s=>{
+    if(!showDone&&isDone(s))return false;
+    if(q&&!(s.Customer+s.Consignee+s.HAWB+s.MAWB).toLowerCase().includes(q))return false;
+    if(rt&&s.Route!==rt)return false;
+    if(st&&!(s.RemarkStatus||'').includes(st))return false;
+    if(bl==='o'&&(s.Billing||'').trim().toLowerCase()!=='o')return false;
+    if(bl==='pending'&&(s.Billing||'').trim())return false;
+    return true;
+  });
+  const awsTh=isAws?'<th>Load ID</th><th>Asset ID</th><th>ETD</th><th>Dimension</th>':'';
+  document.getElementById('list-thead').innerHTML=`<tr><th>Customer</th><th>Consignee</th><th>HAWB</th><th>MAWB</th>${awsTh}<th>Product</th><th>Route</th><th>Tonnage</th><th>ETA</th><th>Project/Remark</th><th>Status</th><th>Delivery</th><th>DUE DATE</th><th>BILLING</th><th>완료</th><th>REMARK</th><th>메모</th><th>액션</th></tr>`;
+  document.getElementById('list-tbody').innerHTML=list.map(s=>{
+    const done=isDone(s);
+    const awsTd=isAws?`<td style="color:#555">${s.LoadID||'—'}</td><td style="color:#555">${s.AssetID||'—'}</td><td>${s.ETD||'—'}</td><td style="color:#555">${s.Dimension||'—'}</td>`:'';
+    const memoCount=(memos[s.id]||[]).length;
+    return`<tr class="${done?'row-done':''}">
+      <td>${s.Customer||'—'}</td><td class="td-wrap">${s.Consignee||'—'}</td>
+      <td style="font-weight:600;color:#4fc3f7">${s.HAWB||'—'}</td><td style="font-size:11px;color:#555">${s.MAWB||'—'}</td>
+      ${awsTd}<td>${s.Product||'—'}</td><td>${s.Route||'—'}</td><td>${s.Tonnage||'—'}</td><td>${s.ETA||'—'}</td>
+      <td class="td-wrap">${s.ProjectRemark||'—'}</td><td>${statusBadge(s.RemarkStatus)}</td>
+      <td style="color:#ffcc80">${s.DeliveryDate||'—'}</td><td>${dueBadge(s.DueDate)}</td>
+      <td>${billingBadge(s.Billing)}</td>
+      <td>${done?'<span class="badge b-gray">완료</span>':''}</td>
+      <td class="td-wrap" style="color:#555">${s.Remark||'—'}</td>
+      <td><button class="btn btn-sm" onclick="openModal('${s.id}')">📝${memoCount>0?` (${memoCount})`:''}</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" onclick="openModal('${s.id}')">수정</button>
+        <button class="btn btn-sm btn-danger" style="margin-left:3px" onclick="delShipment('${s.id}')">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 자동완성 검색 ──
+function handleSearch(){
+  renderShipments();
+  const q=document.getElementById('f-q').value.trim().toLowerCase();
+  const list=document.getElementById('autocomplete-list');
+  if(!q){list.classList.add('hidden');return;}
+  const ships=curData().shipments;
+  const matches=[];
+  ships.forEach(s=>{
+    [s.HAWB,s.MAWB,s.Customer,s.Consignee].forEach(v=>{
+      if(v&&v.toLowerCase().includes(q)&&!matches.includes(v)&&matches.length<8) matches.push(v);
+    });
+  });
+  if(matches.length===0){list.classList.add('hidden');return;}
+  list.classList.remove('hidden');
+  const re=new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  list.innerHTML=matches.map(m=>`<div class="autocomplete-item" onclick="selectAuto('${m.replace(/'/g,"\\'")}')">
+    ${m.replace(re,'<b>$1</b>')}
+  </div>`).join('');
+}
+function selectAuto(val){
+  document.getElementById('f-q').value=val;
+  document.getElementById('autocomplete-list').classList.add('hidden');
+  renderShipments();
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))document.getElementById('autocomplete-list').classList.add('hidden');});
+
+// ── 통계 차트 ──
+function renderStats(){
+  const ships=curData().shipments.filter(s=>!isDone(s));
+  // 차트 인스턴스 초기화
+  Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  chartInstances={};
+
+  const defOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#888',font:{size:11}}}}};
+  const barOpts={...defOpts,scales:{x:{ticks:{color:'#666'},grid:{color:'#1e2535'}},y:{ticks:{color:'#666'},grid:{color:'#1e2535'}}}};
+
+  // Route별 건수
+  const routeCount={};ships.forEach(s=>{const r=s.Route||'기타';routeCount[r]=(routeCount[r]||0)+1;});
+  chartInstances.route=new Chart(document.getElementById('chart-route'),{
+    type:'bar',
+    data:{labels:Object.keys(routeCount),datasets:[{label:'건수',data:Object.values(routeCount),backgroundColor:'#1a3a5c',borderColor:'#4fc3f7',borderWidth:1}]},
+    options:{...barOpts,plugins:{...barOpts.plugins,legend:{display:false}}}
+  });
+
+  // Status별 현황
+  const statusCount={};ships.forEach(s=>{const k=s.RemarkStatus||'미입력';statusCount[k]=(statusCount[k]||0)+1;});
+  const statusColors=['#1a3d1a','#1a3a5c','#3d2a0a','#2a1a3d','#0d2d2d','#3d1a1a','#3d2000'];
+  chartInstances.status=new Chart(document.getElementById('chart-status'),{
+    type:'doughnut',
+    data:{labels:Object.keys(statusCount),datasets:[{data:Object.values(statusCount),backgroundColor:statusColors,borderColor:'#0f1117',borderWidth:2}]},
+    options:{...defOpts}
+  });
+
+  // Billing 완료 vs 대기
+  const bDone=ships.filter(s=>(s.Billing||'').trim().toLowerCase()==='o').length;
+  const bPend=ships.length-bDone;
+  chartInstances.billing=new Chart(document.getElementById('chart-billing'),{
+    type:'doughnut',
+    data:{labels:['완료','대기'],datasets:[{data:[bDone,bPend],backgroundColor:['#1a3d1a','#3d1a1a'],borderColor:'#0f1117',borderWidth:2}]},
+    options:{...defOpts}
+  });
+
+  // Route별 Tonnage
+  const routeTon={};ships.forEach(s=>{const r=s.Route||'기타';routeTon[r]=(routeTon[r]||0)+Number(s.Tonnage||0);});
+  chartInstances.tonnage=new Chart(document.getElementById('chart-tonnage'),{
+    type:'bar',
+    data:{labels:Object.keys(routeTon),datasets:[{label:'Tonnage(kg)',data:Object.values(routeTon).map(v=>Math.round(v)),backgroundColor:'#0d2d2d',borderColor:'#80cbc4',borderWidth:1}]},
+    options:{...barOpts,plugins:{...barOpts.plugins,legend:{display:false}}}
+  });
+}
+
+// ── 메모 ──
+let currentMemoId=null;
+function addMemo(){
+  const input=document.getElementById('memo-input');
+  const text=input.value.trim();
+  if(!text||!currentMemoId)return;
+  if(!memos[currentMemoId])memos[currentMemoId]=[];
+  const now=new Date();
+  const time=`${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  memos[currentMemoId].push({time,text});
+  input.value='';
+  renderMemoList();
+}
+function renderMemoList(){
+  const list=document.getElementById('memo-list');
+  const items=memos[currentMemoId]||[];
+  if(items.length===0){list.innerHTML='<div style="font-size:12px;color:#444;text-align:center;padding:12px">메모가 없어요</div>';return;}
+  list.innerHTML=items.map((m,i)=>`
+    <div class="memo-item">
+      <span class="memo-time">${m.time}</span>
+      <span class="memo-text">${m.text}</span>
+      <button onclick="deleteMemo(${i})" style="background:none;border:none;color:#444;cursor:pointer;font-size:11px">✕</button>
+    </div>`).join('');
+}
+function deleteMemo(i){if(currentMemoId)memos[currentMemoId].splice(i,1);renderMemoList();}
+
+// ── 모달 ──
+const importFields=['Customer','Consignee','HAWB','MAWB','Product','Route','Tonnage','ETA','ProjectRemark','RemarkStatus','DeliveryDate','DueDate','Billing','완료','Remark'];
+const awsFields=['Customer','Consignee','HAWB','MAWB','LoadID','AssetID','ETD','Dimension','Product','Route','Tonnage','ETA','ProjectRemark','RemarkStatus','DeliveryDate','DueDate','Billing','완료','Remark'];
+function curFields(){return mode==='aws'?awsFields:importFields;}
+
+function buildForm(isAws){
+  const fd=[
+    ['Customer','Customer',''],['Consignee','Consignee',''],
+    ['HAWB','HAWB','e.g. HATL20033636'],['MAWB','MAWB','e.g. 369-9870 9240'],
+    ...(isAws?[['LoadID','Load ID',''],['AssetID','Asset ID',''],['ETD','ETD','date'],['Dimension','Dimension','']]: []),
+    ['Product','Product',''],['Route','Route','e.g. ATL-ICN'],
+    ['Tonnage','Tonnage (kg)','number'],['ETA','ETA','date'],
+    ['ProjectRemark','Project / Remark','DAP, FCA, CPT 등'],
+    ['RemarkStatus','Status','e.g. AN 완료'],
+    ['DeliveryDate','Delivery Date','date'],['DueDate','DUE DATE','date'],
+    ['Billing','BILLING','o = 완료'],
+    ['완료','완료 여부','완료 입력 시 숨김'],
+    ['Remark','REMARK',''],
+  ];
+  document.getElementById('modal-form').innerHTML=fd.map(([key,lbl,ph])=>{
+    const isDate=ph==='date',isNum=ph==='number';
+    return`<div><label>${lbl}</label><input type="${isDate?'date':isNum?'number':'text'}" id="m-${key}" placeholder="${(!isDate&&!isNum)?ph:''}"></div>`;
+  }).join('');
+}
+
+function openModal(id){
+  editId=id||null;
+  currentMemoId=id||'new';
+  document.getElementById('modal-ttl').textContent=id?'화물 수정':'새 화물 등록';
+  buildForm(mode==='aws');
+  if(id){const s=curData().shipments.find(x=>String(x.id)===String(id));curFields().forEach(f=>{const el=document.getElementById('m-'+f);if(el&&s)el.value=s[f]||'';});}
+  renderMemoList();
+  document.getElementById('ship-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('ship-modal').classList.remove('open');}
+
+async function saveShipment(){
+  const s={id:editId||Date.now()};
+  curFields().forEach(f=>{const el=document.getElementById('m-'+f);if(el)s[f]=el.value.trim();});
+  if(!s.HAWB&&!s.MAWB){alert('HAWB 또는 MAWB를 입력해주세요');return;}
+  closeModal();
+  await api(ctx(),{action:'saveShipment',data:JSON.stringify(s),sheet:curData().curSheet});
+  await loadAll();renderShipments();renderDashboard();
+}
+
+async function delShipment(id){
+  if(!confirm('삭제하시겠습니까?'))return;
+  await api(ctx(),{action:'deleteShipment',id,sheet:curData().curSheet});
+  await loadAll();renderShipments();
+}
+
+// ── 캘린더 ──
+function calMove(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function renderCalendar(){
+  const ships=curData().shipments.filter(s=>!isDone(s));
+  const days=['일','월','화','수','목','금','토'];
+  const months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-hdr').innerHTML=days.map(d=>`<div class="cal-hdr-cell">${d}</div>`).join('');
+  document.getElementById('cal-title').textContent=`${calYear}년 ${months[calMonth]}`;
+  const first=new Date(calYear,calMonth,1).getDay();
+  const last=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date();
+  let cells='';
+  for(let i=0;i<first;i++){const pd=new Date(calYear,calMonth,0).getDate()-first+i+1;cells+=`<div class="cal-cell other-month"><div class="cal-day-num">${pd}</div></div>`;}
+  for(let d=1;d<=last;d++){
+    const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let evts=ships.filter(s=>parseETA(s.ETA)===ds).map(s=>{
+      const time=s.ETA?s.ETA.split(' ')[1]||'':'';
+      return`<div class="cal-ev ev-eta" title="${s.Consignee||''}">${awbLabel(s)}${time?' / '+time:''}</div>`;
+    }).join('');
+    evts+=ships.filter(s=>parseETA(s.ETD)===ds).map(s=>
+      `<div class="cal-ev ev-etd" title="${s.Consignee||''}">↑${awbLabel(s)}</div>`
+    ).join('');
+    evts+=ships.filter(s=>parseETA(s.DueDate)===ds).map(s=>
+      `<div class="cal-ev ev-due" title="${s.Consignee||''}">${awbLabel(s)}</div>`
+    ).join('');
+    cells+=`<div class="cal-cell${isToday?' today':''}"><div class="cal-day-num">${d}</div>${evts}</div>`;
+  }
+  const rem=(7-(first+last)%7)%7;
+  for(let i=1;i<=rem&&rem<7;i++)cells+=`<div class="cal-cell other-month"><div class="cal-day-num">${i}</div></div>`;
+  document.getElementById('cal-body').innerHTML=cells;
+}
+
+// ── 설정 ──
+function renderSettings(){
+  ['import','nala','emea'].forEach(k=>{
+    const el=document.getElementById('url-'+k);if(el)el.value=URLS[k]||'';
+    const st=document.getElementById('url-status-'+k);
+    if(st){st.textContent=URLS[k]?'연결됨 ✓':'미연결';st.className='sync-badge '+(URLS[k]?'ok':'err');}
+  });
+}
+function saveUrl(key){
+  const url=document.getElementById('url-'+key).value.trim();
+  if(!url){alert('URL을 입력해주세요');return;}
+  URLS[key]=url;localStorage.setItem('url_'+key,url);
+  renderSettings();alert('저장됐어요! 데이터를 불러올게요.');
+  if(ctx()===key)loadSheetList();
+}
+
+document.getElementById('ship-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ── 전역 함수 노출 (HTML onclick에서 호출 가능하도록) ──
+window.showTab=showTab;
+window.setMode=setMode;
+window.setAwsSub=setAwsSub;
+window.selectMonth=selectMonth;
+window.promptNewMonth=promptNewMonth;
+window.openModal=openModal;
+window.closeModal=closeModal;
+window.saveShipment=saveShipment;
+window.delShipment=delShipment;
+window.sortDash=sortDash;
+window.handleSearch=handleSearch;
+window.selectAuto=selectAuto;
+window.addMemo=addMemo;
+window.deleteMemo=deleteMemo;
+window.calMove=calMove;
+window.loadSheetList=loadSheetList;
+window.saveUrl=saveUrl;
+window.addStep=addStep;
+window.removeStep=removeStep;
+
+updateCtxBadge();loadSheetList();renderCalendar();
+</script>
+</body>
+</html>
