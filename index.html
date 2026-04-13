@@ -251,8 +251,8 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
       <div class="chart-wrap"><canvas id="chart-tonnage"></canvas></div>
     </div>
     <div class="chart-card span2">
-      <div class="chart-card-title">📦 무게 총합 현황</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:8px" id="weight-summary"></div>
+      <div class="chart-card-title">📦 무게 총합</div>
+      <div style="text-align:center;padding:20px 0" id="weight-summary"></div>
     </div>
   </div>
 </div>
@@ -681,20 +681,12 @@ function renderStats(){
     options:{...defOpts}
   });
 
-  // 무게 총합
-  const totalTon=ships.reduce((s,x)=>s+Number(x.Tonnage||0),0);
-  const routeTonArr=Object.entries(routeTon).sort((a,b)=>b[1]-a[1]);
-  const topRoute=routeTonArr[0]||['—',0];
-  const billingDoneTon=ships.filter(s=>(s.Billing||'').trim().toLowerCase()==='o').reduce((s,x)=>s+Number(x.Tonnage||0),0);
-  const pendingTon=totalTon-billingDoneTon;
-  document.getElementById('weight-summary').innerHTML=[
-    {label:'전체 총 무게',val:totalTon.toLocaleString()+' kg'},
-    {label:'Billing 완료 무게',val:billingDoneTon.toLocaleString()+' kg'},
-    {label:'Billing 대기 무게',val:pendingTon.toLocaleString()+' kg'},
-    {label:`최다 Route (${topRoute[0]})`,val:Math.round(topRoute[1]).toLocaleString()+' kg'},
-    {label:'화물 건수',val:ships.length+'건'},
-    {label:'평균 무게/건',val:ships.length?Math.round(totalTon/ships.length).toLocaleString()+' kg':'—'},
-  ].map(c=>`<div class="w-card"><div class="w-card-label">${c.label}</div><div class="w-card-val">${c.val}</div></div>`).join('');  ships.forEach(s=>{const r=s.Route||'기타';routeTon[r]=(routeTon[r]||0)+Number(s.Tonnage||0);});
+  // 무게 총합 — 쉼표/공백 제거 후 숫자 변환
+  const toNum=v=>parseFloat(String(v||'0').replace(/,/g,'').trim())||0;
+  const totalTon=ships.reduce((s,x)=>s+toNum(x.Tonnage),0);
+  document.getElementById('weight-summary').innerHTML=
+    `<div style="font-size:36px;font-weight:700;color:#80cbc4">${Math.round(totalTon).toLocaleString()} kg</div>
+     <div style="font-size:13px;color:#555;margin-top:6px">총 ${ships.length}건 합산</div>`;  ships.forEach(s=>{const r=s.Route||'기타';routeTon[r]=(routeTon[r]||0)+toNum(s.Tonnage);});
   chartInstances.tonnage=new Chart(document.getElementById('chart-tonnage'),{
     type:'bar',
     data:{labels:Object.keys(routeTon),datasets:[{label:'Tonnage(kg)',data:Object.values(routeTon).map(v=>Math.round(v)),backgroundColor:'#0d2d2d',borderColor:'#80cbc4',borderWidth:1}]},
