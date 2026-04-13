@@ -119,8 +119,12 @@ textarea{resize:vertical;min-height:50px}
 /* 차트 */
 .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
 .chart-card{background:#161b27;border:1px solid #1e2535;border-radius:12px;padding:16px}
+.chart-card.span2{grid-column:span 2}
 .chart-card-title{font-size:13px;font-weight:600;color:#aaa;margin-bottom:12px}
 .chart-wrap{position:relative;height:220px}
+.w-card{background:#0f1117;border-radius:10px;padding:14px;text-align:center;border:1px solid #1e2535}
+.w-card-label{font-size:11px;color:#555;margin-bottom:6px}
+.w-card-val{font-size:20px;font-weight:700;color:#80cbc4}
 
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:6px}
 .cal-hdr-cell{text-align:center;font-size:11px;color:#555;padding:4px 0;font-weight:600}
@@ -245,6 +249,10 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
     <div class="chart-card">
       <div class="chart-card-title">Route별 총 Tonnage (kg)</div>
       <div class="chart-wrap"><canvas id="chart-tonnage"></canvas></div>
+    </div>
+    <div class="chart-card span2">
+      <div class="chart-card-title">📦 무게 총합 현황</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:8px" id="weight-summary"></div>
     </div>
   </div>
 </div>
@@ -496,6 +504,12 @@ function dueBadge(d){
   return`<span class="due-ok">${d}</span>`;
 }
 
+// HAWB/MAWB 둘 다 없으면 표시 제외
+function hasAwb(s){
+  const h=(s.HAWB||'').trim(), m=(s.MAWB||'').trim();
+  return (h&&h!=='N/A')||(m&&m!=='N/A');
+}
+
 // ── 대시보드 정렬 ──
 function sortDash(col){
   if(dashSort.col===col){
@@ -511,7 +525,7 @@ function sortIcon(col){
 
 // ── 대시보드 ──
 function renderDashboard(){
-  let ships=curData().shipments.filter(s=>!isDone(s));
+  let ships=curData().shipments.filter(s=>!isDone(s)&&hasAwb(s));
   const today=new Date();
   const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const isAws=mode==='aws';
@@ -571,6 +585,7 @@ function renderShipments(){
   const bl=document.getElementById('f-billing').value;
   const isAws=mode==='aws';
   const list=curData().shipments.filter(s=>{
+    if(!hasAwb(s))return false;
     if(!showDone&&isDone(s))return false;
     if(q&&!(s.Customer+s.Consignee+s.HAWB+s.MAWB).toLowerCase().includes(q))return false;
     if(rt&&s.Route!==rt)return false;
@@ -666,14 +681,28 @@ function renderStats(){
     options:{...defOpts}
   });
 
-  // Route별 Tonnage
-  const routeTon={};ships.forEach(s=>{const r=s.Route||'기타';routeTon[r]=(routeTon[r]||0)+Number(s.Tonnage||0);});
+  // 무게 총합
+  const totalTon=ships.reduce((s,x)=>s+Number(x.Tonnage||0),0);
+  const routeTonArr=Object.entries(routeTon).sort((a,b)=>b[1]-a[1]);
+  const topRoute=routeTonArr[0]||['—',0];
+  const billingDoneTon=ships.filter(s=>(s.Billing||'').trim().toLowerCase()==='o').reduce((s,x)=>s+Number(x.Tonnage||0),0);
+  const pendingTon=totalTon-billingDoneTon;
+  document.getElementById('weight-summary').innerHTML=[
+    {label:'전체 총 무게',val:totalTon.toLocaleString()+' kg'},
+    {label:'Billing 완료 무게',val:billingDoneTon.toLocaleString()+' kg'},
+    {label:'Billing 대기 무게',val:pendingTon.toLocaleString()+' kg'},
+    {label:`최다 Route (${topRoute[0]})`,val:Math.round(topRoute[1]).toLocaleString()+' kg'},
+    {label:'화물 건수',val:ships.length+'건'},
+    {label:'평균 무게/건',val:ships.length?Math.round(totalTon/ships.length).toLocaleString()+' kg':'—'},
+  ].map(c=>`<div class="w-card"><div class="w-card-label">${c.label}</div><div class="w-card-val">${c.val}</div></div>`).join('');  ships.forEach(s=>{const r=s.Route||'기타';routeTon[r]=(routeTon[r]||0)+Number(s.Tonnage||0);});
   chartInstances.tonnage=new Chart(document.getElementById('chart-tonnage'),{
     type:'bar',
     data:{labels:Object.keys(routeTon),datasets:[{label:'Tonnage(kg)',data:Object.values(routeTon).map(v=>Math.round(v)),backgroundColor:'#0d2d2d',borderColor:'#80cbc4',borderWidth:1}]},
     options:{...barOpts,plugins:{...barOpts.plugins,legend:{display:false}}}
   });
 }
+  // Route별 Tonnage
+  const routeTon={};
 
 // ── 메모 ──
 let currentMemoId=null;
