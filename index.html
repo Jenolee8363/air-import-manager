@@ -803,6 +803,24 @@ function saveUrl(key){
 
 document.getElementById('ship-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 
+// ── 설정 ──
+function renderSettings(){
+  ['import','nala','emea'].forEach(k=>{
+    const el=document.getElementById('url-'+k);if(el)el.value=URLS[k]||'';
+    const st=document.getElementById('url-status-'+k);
+    if(st){st.textContent=URLS[k]?'연결됨 ✓':'미연결';st.className='sync-badge '+(URLS[k]?'ok':'err');}
+  });
+}
+function addStep(){}
+function removeStep(){}
+function saveUrl(key){
+  const url=document.getElementById('url-'+key).value.trim();
+  if(!url){alert('URL을 입력해주세요');return;}
+  URLS[key]=url;localStorage.setItem('url_'+key,url);
+  renderSettings();alert('저장됐어요! 데이터를 불러올게요.');
+  if(ctx()===key)loadSheetList();
+}
+
 // ── 전역 함수 노출 (HTML onclick에서 호출 가능하도록) ──
 window.showTab=showTab;
 window.setMode=setMode;
@@ -821,8 +839,7 @@ window.deleteMemo=deleteMemo;
 window.calMove=calMove;
 window.loadSheetList=loadSheetList;
 window.saveUrl=saveUrl;
-window.addStep=addStep;
-window.removeStep=removeStep;
+window.renderSettings=renderSettings;
 
 updateCtxBadge();loadSheetList();renderCalendar();
 </script>
