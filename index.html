@@ -176,6 +176,7 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
     <span class="ctx-badge ctx-import" id="ctx-badge">Air Import</span>
   </div>
   <div class="topbar-right">
+    <span id="last-refresh" style="font-size:11px;color:#444"></span>
     <button class="btn btn-sm" onclick="loadSheetList()">↻ 새로고침</button>
     <button class="btn btn-primary btn-sm" onclick="openModal()">+ 새 화물 등록</button>
   </div>
@@ -864,6 +865,22 @@ function saveUrl(key){
   if(ctx()===key)loadSheetList();
 }
 
+// ── 자동 새로고침 (30초마다) ──
+let autoRefreshInterval = null;
+function startAutoRefresh() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+  autoRefreshInterval = setInterval(async () => {
+    await loadAll();
+    updateLastRefreshTime();
+  }, 30000);
+}
+function updateLastRefreshTime() {
+  const now = new Date();
+  const t = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const el = document.getElementById('last-refresh');
+  if (el) el.textContent = `마지막 업데이트: ${t}`;
+}
+
 // ── 전역 함수 노출 (HTML onclick에서 호출 가능하도록) ──
 window.showTab=showTab;
 window.setMode=setMode;
@@ -882,9 +899,14 @@ window.deleteMemo=deleteMemo;
 window.calMove=calMove;
 window.loadSheetList=loadSheetList;
 window.saveUrl=saveUrl;
-window.renderSettings=renderSettings;
+window.startAutoRefresh=startAutoRefresh;
 
-updateCtxBadge();loadSheetList();renderCalendar();
+updateCtxBadge();
+loadSheetList().then(()=>{
+  updateLastRefreshTime();
+  startAutoRefresh();
+});
+renderCalendar();
 </script>
 </body>
 </html>
