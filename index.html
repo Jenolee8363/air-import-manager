@@ -350,7 +350,11 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
 
 <script>
 let mode='import',awsSub='nala';
-const URLS={import:localStorage.getItem('url_import')||'',nala:localStorage.getItem('url_nala')||'',emea:localStorage.getItem('url_emea')||''};
+const URLS={
+  import: 'https://script.google.com/macros/s/AKfycbxzO4Ui_F1dz6O0lUd3VngCUN9Td3Idpv-BLGa2mRvAypMN2ilE21lzIMnw7bQQcnbwkw/exec',
+  nala:   localStorage.getItem('url_nala')||'',
+  emea:   localStorage.getItem('url_emea')||'',
+};
 const DATA={import:{shipments:[],milestones:{},sheets:[],curSheet:''},nala:{shipments:[],milestones:{},sheets:[],curSheet:''},emea:{shipments:[],milestones:{},sheets:[],curSheet:''}};
 let editId=null,calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
 let activeTab='dashboard';
