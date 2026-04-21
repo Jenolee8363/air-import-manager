@@ -377,7 +377,8 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
       </div>
       <div class="info-box">
         구글 시트 <b>Cognex_Today</b>에 <b>A열: 업체명</b>, <b>B열: 배차지역</b>을 입력 후 ↻ 새로고침하면 자동으로 표시돼요.<br>
-        <b>서울</b>은 서울끼리, <b>대전</b>은 대전끼리 자동으로 묶이며 업체가 많거나 거리가 멀면 차량이 나뉩니다.
+        <b>서울</b>은 서울끼리, <b>대전</b>은 대전끼리, <b>경기</b>는 경기끼리 묶이며 거리가 멀면 차량이 나뉩니다.<br>
+        천안·아산·창원 등 <b>그 외 지방</b>은 1업체 = 1차량으로 자동 배차됩니다.
       </div>
       <div id="region-filter-wrap"></div>
       <div id="vendor-list"></div>
@@ -1237,16 +1238,28 @@ async function optimizeDispatch(){
       return;
     }
 
-    // 서울·대전은 별도 풀로 분리, 나머지는 일반 풀
-    // ✅ 나중에 지방 도시 추가하려면 여기에만 추가하면 돼요
-    const FIXED_REGIONS=['서울','대전'];
+    // 지역 분류
+    // ✅ 묶음 배차 허용 지역: 서울·대전만 (거리 기반으로 차량 분리)
+    // ✅ 그 외 지방은 1업체 = 1차량
+    const GROUP_REGIONS=['서울','대전']; // 묶음 허용 지역
+    // 경기는 수도권으로 묶음 허용, 서울과 별도 풀로 관리
+    const GYEONGGI_REGIONS=['경기']; // 경기도는 경기끼리만 묶음
 
     const pools={};
     selected.forEach(v=>{
       const r=(v.region||'').trim();
-      const key=FIXED_REGIONS.includes(r)?r:'__other';
-      if(!pools[key])pools[key]=[];
-      pools[key].push(v);
+      if(GROUP_REGIONS.includes(r)){
+        // 서울·대전: 지역별 풀
+        if(!pools[r])pools[r]=[];
+        pools[r].push(v);
+      } else if(GYEONGGI_REGIONS.includes(r)){
+        // 경기: 경기 풀
+        if(!pools['경기'])pools['경기']=[];
+        pools['경기'].push(v);
+      } else {
+        // 그 외 지방: 각각 단독 차량
+        pools['__solo_'+v.id]=[v];
+      }
     });
 
     // 거리 기반 그룹핑 함수 (한 풀 안에서만 동작)
@@ -1261,7 +1274,6 @@ async function optimizeDispatch(){
           changed=false;
           let bestIdx=-1,bestDist=maxDist;
           remaining.forEach((v,i)=>{
-            // 그룹 내 모든 업체와의 최대 거리가 maxDist 이내인지 확인
             const maxD=Math.max(...group.map(g=>dist(g,v)));
             if(maxD<bestDist){bestDist=maxD;bestIdx=i;}
           });
@@ -1276,16 +1288,21 @@ async function optimizeDispatch(){
     }
 
     // 서울·대전: 동일 지역 내에서만 거리 기반 분리 (15km, 최대 4곳)
-    FIXED_REGIONS.forEach(r=>{
+    GROUP_REGIONS.forEach(r=>{
       if(pools[r]&&pools[r].length>0){
         groupByDistance(pools[r],15,4).forEach(g=>groups.push(g));
       }
     });
 
-    // 나머지 (경기, 미지정 등): 기존 거리 기반 (20km, 최대 3곳)
-    if(pools['__other']&&pools['__other'].length>0){
-      groupByDistance(pools['__other'],20,3).forEach(g=>groups.push(g));
+    // 경기: 경기끼리 거리 기반 분리 (20km, 최대 3곳)
+    if(pools['경기']&&pools['경기'].length>0){
+      groupByDistance(pools['경기'],20,3).forEach(g=>groups.push(g));
     }
+
+    // 그 외 지방: 1업체 1차량
+    Object.entries(pools)
+      .filter(([key])=>key.startsWith('__solo_'))
+      .forEach(([,group])=>groups.push(group));
   }
 
   dispatchResult=groups;
