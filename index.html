@@ -674,6 +674,12 @@ function showTab(tab,btn){
   document.getElementById('tab-'+tab).classList.remove('hidden');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
+  // Cognex 탭일 때는 자동 새로고침 중지
+  if(tab==='cognex'){
+    if(autoRefreshInterval){ clearInterval(autoRefreshInterval); autoRefreshInterval=null; }
+  } else {
+    if(!autoRefreshInterval) startAutoRefresh();
+  }
   ({dashboard:renderDashboard,shipments:renderShipments,stats:renderStats,calendar:renderCalendar,todo:renderTodo,mail:()=>{},cognex:renderCognex,settings:renderSettings})[tab]?.();
 }
 
