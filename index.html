@@ -1472,7 +1472,13 @@ window.openTodoModal=openTodoModal;window.saveTodo=saveTodo;window.setTodoType=s
 window.toggleTodoDone=toggleTodoDone;window.deleteTodo=deleteTodo;window.filterTodo=filterTodo;
 window.openVendorModal=openVendorModal;window.saveVendor=saveVendor;window.deleteVendor=deleteVendor;
 window.selectAllVendors=selectAllVendors;window.optimizeDispatch=optimizeDispatch;window.saveDispatchResult=saveDispatchResult;
-window.saveCognexUrl=saveCognexUrl;window.renderVendorList=renderVendorList;
+function openVendorModalWithName(name){
+  document.getElementById('v-name').value=name;
+  document.getElementById('v-address').value='';
+  document.getElementById('v-note').value='';
+  document.getElementById('vendor-modal').classList.add('open');
+}
+window.openVendorModalWithName=openVendorModalWithName;
 window.addCalMemo=addCalMemo;window.deleteMemo=deleteMemo;window.showCalPopup=showCalPopup;
 
 // 초기화
