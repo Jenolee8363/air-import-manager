@@ -1238,31 +1238,7 @@ async function optimizeDispatch(){
       return;
     }
 
-    // 지역 분류
-    // ✅ 묶음 배차 허용 지역: 서울·대전만 (거리 기반으로 차량 분리)
-    // ✅ 그 외 지방은 1업체 = 1차량
-    const GROUP_REGIONS=['서울','대전']; // 묶음 허용 지역
-    // 경기는 수도권으로 묶음 허용, 서울과 별도 풀로 관리
-    const GYEONGGI_REGIONS=['경기']; // 경기도는 경기끼리만 묶음
-
-    const pools={};
-    selected.forEach(v=>{
-      const r=(v.region||'').trim();
-      if(GROUP_REGIONS.includes(r)){
-        // 서울·대전: 지역별 풀
-        if(!pools[r])pools[r]=[];
-        pools[r].push(v);
-      } else if(GYEONGGI_REGIONS.includes(r)){
-        // 경기: 경기 풀
-        if(!pools['경기'])pools['경기']=[];
-        pools['경기'].push(v);
-      } else {
-        // 그 외 지방: 각각 단독 차량
-        pools['__solo_'+v.id]=[v];
-      }
-    });
-
-    // 거리 기반 그룹핑 함수 (한 풀 안에서만 동작)
+ 풀 안에서만 동작)
     function groupByDistance(pool,maxDist,maxPerVehicle){
       const result=[];
       const remaining=[...pool];
