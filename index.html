@@ -91,9 +91,9 @@ tr:hover td{background:#1e2535}
 .autocomplete-item b{color:#4fc3f7}
 
 /* 모달 */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
 .overlay.open{display:flex}
-.modal{background:#161b27;border-radius:16px;border:1px solid #2a3040;padding:22px;width:100%;max-width:680px;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.modal{background:#161b27;border-radius:16px;border:1px solid #2a3040;padding:22px;width:100%;max-width:680px;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;z-index:10000}
 .modal h3{font-size:15px;font-weight:600;margin-bottom:15px;color:#fff}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .span2{grid-column:span 2}
@@ -194,7 +194,7 @@ textarea{resize:vertical;min-height:50px}
 .stop-num{width:22px;height:22px;border-radius:50%;background:#1a3a5c;color:#4fc3f7;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .stop-name{font-size:13px;font-weight:600;color:#e0e0e0}
 .stop-addr{font-size:11px;color:#555}
-#map{height:350px;border-radius:12px;border:1px solid #1e2535;margin-bottom:14px;background:#161b27}
+#map{height:350px;border-radius:12px;border:1px solid #1e2535;margin-bottom:14px;background:#161b27;position:relative;z-index:1}
 
 .due-warn{color:#ef9a9a;font-weight:600}
 .due-ok{color:#a5d6a7}
