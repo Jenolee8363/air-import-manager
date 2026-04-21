@@ -775,6 +775,7 @@ async function deleteMemo(id){await api({action:'deleteMemo',id});await loadAll(
 
 let todoFilter='all';
 function renderTodo(){
+
   const ts=todayStr();
   document.getElementById('todo-today-label').textContent='📅 오늘 할 일 — '+ts;
   const todayItems2=todos.filter(t=>t.dueDate===ts&&t.done!=='true');
@@ -858,10 +859,24 @@ async function saveTodo(){
   const content=document.getElementById('todo-content').value.trim();
   if(!content){alert('내용을 입력해주세요');return;}
   const hawb=todoType==='ship'?document.getElementById('todo-hawb-sel').value:'';
-  const t={id:String(Date.now()),hawb,content,priority:document.getElementById('todo-priority').value,dueDate:document.getElementById('todo-date').value,done:'false',createdAt:new Date().toISOString(),type:todoType};
+  const t={
+    id:String(Date.now()),
+    hawb:hawb||'',
+    content:content,
+    priority:document.getElementById('todo-priority').value||'normal',
+    dueDate:document.getElementById('todo-date').value||'',
+    done:'false',
+    createdAt:new Date().toISOString(),
+    type:todoType||'free'
+  };
   closeModal('todo-modal');
-  await api({action:'saveTodo',data:JSON.stringify(t)});
-  await loadAll();renderTodo();
+  const res=await api({action:'saveTodo',data:JSON.stringify(t)});
+  if(res&&res.ok){
+    todos.push(t);
+    renderTodo();
+  }
+  await loadAll();
+  renderTodo();
 }
 async function toggleTodoDone(id,done){
   const t=todos.find(x=>String(x.id)===String(id));
