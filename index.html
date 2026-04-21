@@ -1034,7 +1034,7 @@ function renderDispatchResult(groups){
 }
 async function saveDispatchResult(){
   const today=todayStr(),rows=[];
-  dispatchResult.forEach((group,gi)=>{group.forEach((v,i)=>{rows.push({date:today,vehicle:gi+1,order:i+1,name:v.name,address:v.address||'',region:v.region||'});});});
+  dispatchResult.forEach((group,gi)=>{group.forEach((v,i)=>{rows.push({date:today,vehicle:gi+1,order:i+1,name:v.name,address:v.address||'',region:v.region||''});});});
   await cognexApi({action:'saveDispatch',data:JSON.stringify(rows)});
   alert('저장됐어요!');
 }
