@@ -1255,10 +1255,20 @@ function renderCognex(){
     });
     cognexApi({action:'getTodayDispatch'}).then(data=>{
       if(data&&data.names&&data.names.length){
-        // 당일 배차 업체명으로 자동 체크
         data.names.forEach(name=>{
-          const v=vendors.find(x=>x.name===name||x.name.includes(name)||name.includes(x.name));
-          if(v){const el=document.getElementById('vc-'+v.id);if(el)el.checked=true;}
+          // 부분 매칭 — 대소문자 무시, 공백 무시
+          const normalize = s => s.toLowerCase().replace(/\s/g,'').replace(/[^\w가-힣]/g,'');
+          const normName = normalize(name);
+          const v = vendors.find(x => {
+            const normV = normalize(x.name);
+            return normV === normName || 
+                   normV.includes(normName) || 
+                   normName.includes(normV);
+          });
+          if(v){
+            const el=document.getElementById('vc-'+v.id);
+            if(el) el.checked=true;
+          }
         });
       }
     });
