@@ -1284,7 +1284,7 @@ function renderCognex(){
 function renderVendorList(){
   document.getElementById('vendor-list').innerHTML=vendors.length?
     vendors.map(v=>`<div class="vendor-item">
-      <input type="checkbox" class="vendor-check" id="vc-${v.id}" checked>
+      <input type="checkbox" class="vendor-check" id="vc-${v.id}">
       <div style="flex:1">
         <div class="vendor-name">${v.name}</div>
         <div class="vendor-addr">${v.address||'주소 없음'} ${v.lat?'📍':''}</div>
