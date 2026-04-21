@@ -368,8 +368,8 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
         <button class="btn btn-primary btn-sm" onclick="openVendorModal()">+ 업체 추가</button>
       </div>
       <div class="info-box">
-        Cognex_Today sheet: A=vendor name, B=region.<br>
-        Seoul/Daejeon grouped by region (15km max 4). Gyeonggi grouped by coords (20km max 3). Others = 1 vehicle each.
+        구글 시트 <b>Cognex_Today</b>에 <b>A열: 업체명</b>, <b>B열: 배차지역</b> 입력 후 새로고침하세요.<br>
+        서울·대전은 지역끼리 묶음(15km/최대4곳), 경기는 좌표 기반(20km/최대3곳), 그 외 지방은 1업체=1차량.
       </div>
       <div id="region-filter-wrap"></div>
       <div id="vendor-list"></div>
@@ -773,26 +773,72 @@ async function addCalMemo(ds){
 }
 async function deleteMemo(id){await api({action:'deleteMemo',id});await loadAll();if(calSelectedDate)showCalPopup(calSelectedDate);}
 
+let todoFilter='all';
 function renderTodo(){
   const ts=todayStr();
   document.getElementById('todo-today-label').textContent='📅 오늘 할 일 — '+ts;
-  const todayTodoItems=todos.filter(t=>t.dueDate===ts&&t.done!=='true');
+  const todayItems2=todos.filter(t=>t.dueDate===ts&&t.done!=='true');
   const overdue=todos.filter(t=>t.dueDate&&t.dueDate<ts&&t.done!=='true');
-  document.getElementById('todo-today-list').innerHTML=[...overdue,...todayTodoItems].map(t=>todoItemHtml(t)).join('')||'<div style="color:#555;font-size:13px;padding:14px;text-align:center">오늘 할 일 없음</div>';
-  renderTodoAll('all');
+  const todayAll=[...overdue,...todayItems2];
+  document.getElementById('todo-today-list').innerHTML=todayAll.length?todayAll.map(t=>todoItemHtml(t)).join(''):'<div style="color:#555;font-size:13px;padding:14px;text-align:center">오늘 할 일이 없어요 🎉</div>';
+  renderTodoAll(todoFilter);
 }
-function filterTodo(type){renderTodoAll(type);}
+function filterTodo(type,btn){
+  todoFilter=type;
+  document.querySelectorAll('#tab-todo .btn-sm').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderTodoAll(type);
+}
 function renderTodoAll(type){
-  let list=todos.filter(t=>t.done!=='true');
-  if(type==='urgent')list=list.filter(t=>t.priority==='urgent');
-  else if(type==='normal')list=list.filter(t=>t.priority==='normal');
-  else if(type==='done')list=todos.filter(t=>t.done==='true');
-  document.getElementById('todo-all-list').innerHTML=list.map(t=>todoItemHtml(t)).join('')||'<div style="color:#555;font-size:13px;padding:14px;text-align:center">할 일 없음</div>';
+  let list;
+  if(type==='done'){
+    list=todos.filter(t=>t.done==='true');
+  } else {
+    list=todos.filter(t=>t.done!=='true');
+    if(type==='urgent')list=list.filter(t=>t.priority==='urgent');
+    else if(type==='normal')list=list.filter(t=>t.priority==='normal');
+  }
+  document.getElementById('todo-all-list').innerHTML=list.length?list.map(t=>todoItemHtml(t)).join(''):'<div style="color:#555;font-size:13px;padding:14px;text-align:center">할 일이 없어요</div>';
 }
 function todoItemHtml(t){
+  const ts=todayStr();
+  const isOverdue=t.dueDate&&t.dueDate<ts&&t.done!=='true';
   const dot=t.done==='true'?'dot-done':t.priority==='urgent'?'dot-urgent':'dot-normal';
   const icon=t.priority==='urgent'?'🔴':'🟡';
-  return'<div class="todo-item'+(t.done==='true'?' done':'')+'"><div class="todo-dot '+dot+'"></div><div style="flex:1">'+(t.hawb?'<div class="todo-hawb">'+t.hawb+'</div>':'')+'<div class="todo-content">'+icon+' '+(t.content||'')+'</div><div class="todo-due">'+(t.dueDate||'')+'</div></div><div style="display:flex;gap:6px">'+(t.done!=='true'?'<button class="btn btn-sm btn-success" onclick="toggleTodoDone(\''+t.id+'\',true)">완료</button>':'<button class="btn btn-sm" onclick="toggleTodoDone(\''+t.id+'\',false)">되돌리기</button>')+'<button class="btn btn-sm btn-danger" onclick="deleteTodo(\''+t.id+'\')">삭제</button></div></div>';
+  const dueTxt=t.dueDate?(isOverdue?'<span style="color:#ef9a9a;font-weight:600">'+t.dueDate+' (기한초과)</span>':'<span style="color:#555">'+t.dueDate+'</span>'):'';
+  return'<div class="todo-item'+(t.done==='true'?' done':'')+'">'
+    +'<div class="todo-dot '+dot+'"></div>'
+    +'<div style="flex:1">'
+      +(t.hawb?'<div class="todo-hawb">'+t.hawb+'</div>':'')
+      +'<div class="todo-content">'+icon+' '+(t.content||'')+'</div>'
+      +(dueTxt?'<div class="todo-due">'+dueTxt+'</div>':'')
+    +'</div>'
+    +'<div style="display:flex;gap:6px">'
+      +(t.done!=='true'
+        ?'<button class="btn btn-sm btn-success" onclick="completeTodo(\''+t.id+'\')">완료</button>'
+        :'<button class="btn btn-sm" onclick="uncompleteTodo(\''+t.id+'\')">되돌리기</button>')
+      +'<button class="btn btn-sm btn-danger" onclick="deleteTodo(\''+t.id+'\')">삭제</button>'
+    +'</div>'
+  +'</div>';
+}
+async function completeTodo(id){
+  const t=todos.find(x=>String(x.id)===String(id));
+  if(!t)return;
+  t.done='true';
+  await api({action:'saveTodo',data:JSON.stringify(t)});
+  await loadAll();renderTodo();
+}
+async function uncompleteTodo(id){
+  const t=todos.find(x=>String(x.id)===String(id));
+  if(!t)return;
+  t.done='false';
+  await api({action:'saveTodo',data:JSON.stringify(t)});
+  await loadAll();renderTodo();
+}
+async function deleteTodo(id){
+  if(!confirm('삭제하시겠습니까?'))return;
+  await api({action:'deleteTodo',id});
+  await loadAll();renderTodo();
 }
 function setTodoType(type){
   todoType=type;
@@ -801,16 +847,29 @@ function setTodoType(type){
   document.getElementById('todo-ship-select').classList.toggle('hidden',type!=='ship');
   if(type==='ship'){document.getElementById('todo-hawb-sel').innerHTML=shipments.filter(s=>!isDone(s)&&hasAwb(s)).map(s=>'<option value="'+awbLabel(s)+'">'+awbLabel(s)+' — '+(s.Consignee||'')+'</option>').join('');}
 }
-function openTodoModal(){setTodoType('free');document.getElementById('todo-content').value='';document.getElementById('todo-date').value=todayStr();document.getElementById('todo-priority').value='normal';document.getElementById('todo-modal').classList.add('open');}
+function openTodoModal(){
+  setTodoType('free');
+  document.getElementById('todo-content').value='';
+  document.getElementById('todo-date').value=todayStr();
+  document.getElementById('todo-priority').value='normal';
+  document.getElementById('todo-modal').classList.add('open');
+}
 async function saveTodo(){
   const content=document.getElementById('todo-content').value.trim();
   if(!content){alert('내용을 입력해주세요');return;}
   const hawb=todoType==='ship'?document.getElementById('todo-hawb-sel').value:'';
-  const t={id:Date.now(),hawb,content,priority:document.getElementById('todo-priority').value,dueDate:document.getElementById('todo-date').value,done:'false',createdAt:new Date().toISOString(),type:todoType};
-  closeModal('todo-modal');await api({action:'saveTodo',data:JSON.stringify(t)});await loadAll();renderTodo();
+  const t={id:String(Date.now()),hawb,content,priority:document.getElementById('todo-priority').value,dueDate:document.getElementById('todo-date').value,done:'false',createdAt:new Date().toISOString(),type:todoType};
+  closeModal('todo-modal');
+  await api({action:'saveTodo',data:JSON.stringify(t)});
+  await loadAll();renderTodo();
 }
-async function toggleTodoDone(id,done){const t=todos.find(x=>x.id===id);if(!t)return;t.done=done?'true':'false';await api({action:'saveTodo',data:JSON.stringify(t)});await loadAll();renderTodo();}
-async function deleteTodo(id){await api({action:'deleteTodo',id});await loadAll();renderTodo();}
+async function toggleTodoDone(id,done){
+  const t=todos.find(x=>String(x.id)===String(id));
+  if(!t)return;
+  t.done=done?'true':'false';
+  await api({action:'saveTodo',data:JSON.stringify(t)});
+  await loadAll();renderTodo();
+}
 
 function showMailTab(tab,btn){
   ['status','register','an'].forEach(t=>document.getElementById('mail-'+t).classList.toggle('hidden',t!==tab));
