@@ -583,6 +583,7 @@ function parseETA(eta){
   return eta;
 }
 function isDone(s){return(s['완료']||'').toString().trim()==='완료';}
+function isTodoDone(t){const v=String(t.done||'').trim().toLowerCase();return v==='true'||v==='1'||v==='yes';}
 function hasAwb(s){const h=(s.HAWB||'').trim(),m=(s.MAWB||'').trim();return(h&&h!=='N/A')||(m&&m!=='N/A');}
 function awbLabel(s){return(!s.HAWB||s.HAWB.trim()==='N/A'||s.HAWB.trim()==='')?s.MAWB:s.HAWB;}
 function todayStr(){const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
@@ -737,7 +738,7 @@ function renderCalendar(){
   for(let d=1;d<=last;d++){
     const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
     const ds=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const dayTodos=todos.filter(t=>t.dueDate===ds&&t.done!=='true');
+    const dayTodos=todos.filter(t=>t.dueDate===ds&&!isTodoDone(t));
     const dayMemos=memos.filter(m=>m.date===ds);
     let evts=ships.filter(s=>parseETA(s.ETA)===ds).map(s=>{const time=s.ETA?s.ETA.split(' ')[1]||'':'';return'<div class="cal-ev ev-eta">'+awbLabel(s)+(time?' / '+time:'')+'</div>';}).join('');
     evts+=ships.filter(s=>parseETA(s.ETD)===ds).map(s=>'<div class="cal-ev ev-etd">'+awbLabel(s)+'</div>').join('');
