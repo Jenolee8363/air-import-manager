@@ -318,7 +318,7 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
     <div id="status-result" style="margin-top:14px"></div>
   </div>
   <div id="mail-register" class="hidden">
-    <div class="dropzone" onclick="document.getElementById('fi-register').click()">
+    <div class="dropzone" id="dz-register" onclick="document.getElementById('fi-register').click()">
       <div class="drop-icon">📄</div>
       <div class="drop-title">AWB 서류를 드래그하거나 클릭하여 선택</div>
       <div class="drop-sub">PDF / 이미지 / 엑셀 / 워드 모두 가능</div>
@@ -495,17 +495,28 @@ let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
 let dashSort={col:'',dir:'asc'},activeTab='dashboard',calSelectedDate='';
 let chartInstances={},autoRefreshInterval=null,activeRegionFilter='';
 
-function normalizeStr(s){return s.toLowerCase().replace(/[&\-_.,()\/]/g,' ').replace(/\s+/g,' ').trim();}
+const COMMON_WORDS=['시스템','기술','산업','엔지니어링','테크','솔루션','코리아','korea','tech','system','systems','solution','engineering'];
+function normalizeStr(s){return s.toLowerCase().replace(/[&\-_.,()\/\s]/g,'').trim();}
 function smartMatch(a,b){
   const na=normalizeStr(a),nb=normalizeStr(b);
   if(na===nb)return true;
-  const ca=na.replace(/\s/g,''),cb=nb.replace(/\s/g,'');
-  if(ca===cb)return true;
-  if(ca.includes(cb)||cb.includes(ca))return true;
-  const wa=na.split(' ').filter(w=>w.length>1),wb=nb.split(' ').filter(w=>w.length>1);
-  if(!wa.length||!wb.length)return false;
-  const sh=wa.length<=wb.length?wa:wb,lo=wa.length<=wb.length?wb:wa;
-  return sh.every(w=>lo.some(lw=>lw.includes(w)||w.includes(lw)));
+  if(na.length<2||nb.length<2)return false;
+  const longer=na.length>=nb.length?na:nb;
+  const shorter=na.length<nb.length?na:nb;
+  if(shorter.length<=2)return na===nb;
+  if(longer===shorter)return true;
+  if(!longer.includes(shorter))return false;
+  const isCommon=COMMON_WORDS.some(w=>normalizeStr(w)===shorter);
+  if(isCommon)return false;
+  if(shorter.length>=6)return true;
+  const origA=a.toLowerCase().replace(/[&\-_.,()\/]/g,' ').replace(/\s+/g,' ').trim();
+  const origB=b.toLowerCase().replace(/[&\-_.,()\/]/g,' ').replace(/\s+/g,' ').trim();
+  const wordsA=origA.split(' ').filter(w=>w.length>1&&!COMMON_WORDS.includes(w));
+  const wordsB=origB.split(' ').filter(w=>w.length>1&&!COMMON_WORDS.includes(w));
+  if(!wordsA.length||!wordsB.length)return na===nb;
+  const shorter2=wordsA.length<=wordsB.length?wordsA:wordsB;
+  const longer2=wordsA.length<=wordsB.length?wordsB:wordsA;
+  return shorter2.every(w=>longer2.some(lw=>lw===w||lw.includes(w)||w.includes(lw)));
 }
 
 async function api(params){
@@ -1003,9 +1014,11 @@ function groupByDistance(pool,maxDist,maxPerVehicle){
     while(changed&&group.length<maxPerVehicle){
       changed=false;
       let bestIdx=-1,bestDist=maxDist;
+      const targetSize=group.length<2?2:maxPerVehicle;
       remaining.forEach((v,i)=>{
         const maxD=Math.max(...group.map(g=>dist(g,v)));
-        if(maxD<bestDist){bestDist=maxD;bestIdx=i;}
+        const threshold=group.length<2?maxDist*0.6:maxDist;
+        if(maxD<threshold&&maxD<bestDist){bestDist=maxD;bestIdx=i;}
       });
       if(bestIdx>=0){group.push(remaining.splice(bestIdx,1)[0]);changed=true;}
     }
