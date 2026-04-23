@@ -953,13 +953,18 @@ async function analyzeMailRegister(){
   if(!text&&!b64){alert('서류를 업로드하거나 붙여넣어주세요');return;}
   const resultDiv=document.getElementById('register-result');
   resultDiv.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:12px;background:#0d1520;border-radius:10px"><div style="width:16px;height:16px;border:2px solid #1e2535;border-top-color:#4fc3f7;border-radius:50%;animation:spin .8s linear infinite"></div><span style="font-size:13px;color:#888">Extracting...</span></div>';
-  const prompt='Extract shipment info from this document. Reply JSON only:\n{"Customer":"","Consignee":"","HAWB":"","MAWB":"","Route":"","ETA":"","Tonnage":"","ProjectRemark":"","RemarkStatus":"AN완료"}\ncontent: '+text.slice(0,2000);
+  const prompt='You must reply with ONLY a JSON object. No explanation, no markdown, no extra text. Just the raw JSON.\nExtract shipment info:\n{"Customer":"","Consignee":"","HAWB":"","MAWB":"","Route":"","ETA":"","Tonnage":"","ProjectRemark":"","RemarkStatus":"AN완료"}\nDocument: '+text.slice(0,2000);
   const res=await gemini(prompt,b64,mime);
-  if(!res){resultDiv.innerHTML='';return;}
+  if(!res){resultDiv.innerHTML='<div style="color:#ef9a9a;font-size:13px;padding:12px">Gemini API 응답 없음. API 키를 확인해주세요.</div>';return;}
   try{
-    const data=JSON.parse(res.replace(/```json|```/g,'').trim());
-    resultDiv.innerHTML='<div class="result-box"><div class="result-box-title">Extracted Info</div><div class="result-grid">'+Object.entries(data).map(([k,v])=>'<div class="result-item"><div class="result-label">'+k+'</div><div class="result-val'+(k==='HAWB'?' hl':'')+'">'+( v||'—')+'</div></div>').join('')+'</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="document.getElementById(\'register-result\').innerHTML=\'\'">취소</button><button class="btn btn-primary" onclick=\'registerShipFromAI('+JSON.stringify(JSON.stringify(data))+')\'>등록 →</button></div></div>';
-  }catch(e){resultDiv.innerHTML='<div style="color:#ef9a9a;font-size:13px;padding:12px">Parse error</div>';}
+    const jsonStr=res.replace(/```json|```/g,'').trim();
+    const match=jsonStr.match(/\{[\s\S]*\}/);
+    if(!match)throw new Error('No JSON found');
+    const data=JSON.parse(match[0]);
+    resultDiv.innerHTML='<div class="result-box"><div class="result-box-title">추출된 화물 정보</div><div class="result-grid">'+Object.entries(data).map(([k,v])=>'<div class="result-item"><div class="result-label">'+k+'</div><div class="result-val'+(k==='HAWB'?' hl':'')+'">'+( v||'—')+'</div></div>').join('')+'</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="document.getElementById(\'register-result\').innerHTML=\'\'">취소</button><button class="btn btn-primary" onclick=\'registerShipFromAI('+JSON.stringify(JSON.stringify(data))+')\'>등록 →</button></div></div>';
+  }catch(e){
+    resultDiv.innerHTML='<div class="result-box"><div style="color:#ef9a9a;font-size:13px;margin-bottom:10px">JSON 파싱 실패. Gemini 응답 내용:</div><div style="background:#0f1117;border:1px solid #2a3040;border-radius:8px;padding:10px;font-size:12px;color:#888;white-space:pre-wrap;max-height:200px;overflow-y:auto">'+res+'</div></div>';
+  }
 }
 async function registerShipFromAI(dataStr){
   const data=JSON.parse(dataStr);const s={id:Date.now(),...data};
