@@ -217,7 +217,63 @@ textarea{resize:vertical;min-height:50px}
 .stop-addr{font-size:11px;color:#555}
 #map{height:350px;border-radius:12px;border:1px solid #1e2535;margin-bottom:14px;background:#161b27;position:relative;z-index:1}
 
-/* ── MISC ── */
+/* ── GROUP VIEW ── */
+.grp-block{margin-bottom:14px}
+.grp-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:10px 10px 0 0;border:1px solid;border-bottom:none;cursor:pointer;user-select:none;transition:opacity .15s}
+.grp-hdr:hover{opacity:.85}
+.grp-hdr-label{font-size:13px;font-weight:600;flex:1}
+.grp-cnt{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600}
+.grp-toggle{font-size:13px;transition:transform .2s}
+.grp-toggle.closed{transform:rotate(-90deg)}
+.grp-body{border:1px solid;border-radius:0 0 10px 10px;overflow:hidden}
+.grp-body.hidden{display:none}
+.grp-row{display:flex;align-items:center;gap:0;font-size:12px;border-bottom:1px solid #1a2030;transition:background .1s}
+.grp-row:last-child{border-bottom:none}
+.grp-row:hover{background:#1e2535 !important}
+.grp-cell{padding:8px 10px;color:#ccc;white-space:nowrap}
+.grp-cell.hawb{font-weight:600;color:#4fc3f7;min-width:120px}
+.grp-cell.customer{min-width:100px;color:#e0e0e0}
+.grp-cell.consignee{min-width:120px;max-width:160px;white-space:normal;word-break:break-all;font-size:11px;color:#aaa}
+.grp-cell.progress{flex:1;min-width:140px;color:#ffcc80;font-size:12px}
+.grp-cell.eta{min-width:90px;font-size:11px;color:#888}
+.grp-cell.due{min-width:100px}
+.grp-cell.billing{min-width:70px}
+.grp-cell.action{min-width:80px}
+
+/* ── INLINE PROGRESS EDIT ── */
+.progress-input{background:transparent;border:none;border-bottom:1px solid #2a3040;color:#ffcc80;font-size:12px;font-family:inherit;width:100%;padding:2px 4px;outline:none}
+.progress-input:focus{border-bottom-color:#4fc3f7}
+
+/* ── GROUP COLORS ── */
+.gc-action{background:#3d2a0a;border-color:#7a4f10}
+.gc-action .grp-hdr-label{color:#ffcc80}
+.gc-action .grp-cnt{background:#7a4f10;color:#ffcc80}
+.gc-action .grp-body{border-color:#7a4f10}
+.gc-action .grp-row{background:#1e1508}
+
+.gc-customs{background:#1a2d3d;border-color:#2a4a6c}
+.gc-customs .grp-hdr-label{color:#4fc3f7}
+.gc-customs .grp-cnt{background:#1a3a5c;color:#4fc3f7}
+.gc-customs .grp-body{border-color:#2a4a6c}
+.gc-customs .grp-row{background:#0d1520}
+
+.gc-transport{background:#1a2d1a;border-color:#2a5a2a}
+.gc-transport .grp-hdr-label{color:#a5d6a7}
+.gc-transport .grp-cnt{background:#1a3d1a;color:#a5d6a7}
+.gc-transport .grp-body{border-color:#2a5a2a}
+.gc-transport .grp-row{background:#0d180d}
+
+.gc-other{background:#1e2535;border-color:#2a3040}
+.gc-other .grp-hdr-label{color:#888}
+.gc-other .grp-cnt{background:#2a3040;color:#888}
+.gc-other .grp-body{border-color:#2a3040}
+.gc-other .grp-row{background:#161b27}
+
+.gc-empty{background:#1e2535;border-color:#2a3040}
+.gc-empty .grp-hdr-label{color:#555}
+.gc-empty .grp-cnt{background:#2a3040;color:#555}
+.gc-empty .grp-body{border-color:#2a3040}
+.gc-empty .grp-row{background:#161b27}
 .due-warn{color:#ef9a9a;font-weight:600}
 .due-ok{color:#a5d6a7}
 tr.row-done td{opacity:0.35;text-decoration:line-through}
@@ -355,16 +411,27 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
   </div>
   <div class="sec-hd">
     <span class="sec-title">화물 현황</span>
-    <div style="display:flex;gap:6px;align-items:center">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#666;cursor:pointer">
         <input type="checkbox" id="dash-select-all" onchange="toggleSelectAll('dashboard',this.checked)" style="width:auto;accent-color:#4fc3f7"> 전체선택
       </label>
+      <div style="display:flex;background:#0f1117;border:1px solid #2a3040;border-radius:8px;overflow:hidden">
+        <button id="btn-view-table" class="btn btn-sm" style="border:none;border-radius:0;background:#1a3a5c;color:#4fc3f7" onclick="setDashView('table')">☰ 테이블</button>
+        <button id="btn-view-group" class="btn btn-sm" style="border:none;border-radius:0;background:transparent;color:#666" onclick="setDashView('group')">⊞ 그룹</button>
+      </div>
     </div>
   </div>
-  <div class="tbl-wrap"><table>
-    <thead id="dash-thead"></thead>
-    <tbody id="dash-tbody"></tbody>
-  </table></div>
+  <!-- 테이블 뷰 -->
+  <div id="dash-table-view">
+    <div class="tbl-wrap"><table>
+      <thead id="dash-thead"></thead>
+      <tbody id="dash-tbody"></tbody>
+    </table></div>
+  </div>
+  <!-- 그룹 뷰 -->
+  <div id="dash-group-view" class="hidden">
+    <div id="dash-group-body"></div>
+  </div>
 </div>
 
 <!-- ══════════════ SHIPMENTS ══════════════ -->
@@ -536,8 +603,8 @@ tr.row-done td{opacity:0.35;text-decoration:line-through}
         <span class="fmt-badge fmt-txt">.txt</span>
       </div>
     </div>
-    <input type="file" id="fi-an" accept=".pdf,.jpg,.jpeg,.png,.msg,.eml,.txt" style="display:none" onchange="handleMailFileInput(this,'an')">
-    <div id="an-file-preview" style="margin-top:8px"></div>
+    <input type="file" id="fi-an" accept=".pdf,.jpg,.jpeg,.png,.msg,.eml,.txt" multiple style="display:none" onchange="handleMultiFileInput(this,'an')">
+    <div id="an-file-preview" class="file-preview-list" style="margin-top:8px"></div>
     <div class="divider-or">또는 텍스트 붙여넣기</div>
     <textarea id="ta-an" placeholder="서류 내용을 붙여넣으세요" style="min-height:80px;margin-bottom:12px"></textarea>
     <div style="margin-bottom:12px">
@@ -700,9 +767,29 @@ let editShipId=null,todoType='free',selectedInco='',dispatchResult=[],leafletMap
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
 let dashSort={col:'ETA',dir:'asc'},activeTab='dashboard',calSelectedDate='';
 let chartInstances={},autoRefreshInterval=null,activeRegionFilter='';
+let dashView='table'; // 'table' | 'group'
+
+/* ── 진행현황 그룹 분류 설정 (키워드 수정 가능) ── */
+const PROGRESS_GROUPS=[
+  {key:'action', label:'📋 처리 필요', color:'gc-action',
+   keywords:['인보이스','invoice','서류','확인','필요','보내','요청','연락','미비','준비','작성']},
+  {key:'customs', label:'🔵 통관', color:'gc-customs',
+   keywords:['통관','do발급','do ','창고','반입','세관','신고','허가','면장']},
+  {key:'transport', label:'🚚 운송', color:'gc-transport',
+   keywords:['운송','배송','출발','도착','픽업','pick','deliver','transit','이동']},
+];
+function classifyProgress(text){
+  if(!text||!text.trim())return'empty';
+  const t=text.toLowerCase();
+  for(const g of PROGRESS_GROUPS){
+    if(g.keywords.some(k=>t.includes(k)))return g.key;
+  }
+  return'other';
+}
 
 // Multi-file storage for register tab
 let registerFiles=[];
+let anFiles=[];
 
 // Bulk select state
 let dashSelected=new Set(),shipSelected=new Set();
@@ -774,7 +861,7 @@ async function gemini(prompt, b64Array=[], mimes=[], forceJson=false){
   const body={contents:[{parts}]};
   if(forceJson)body.generationConfig={responseMimeType:'application/json'};
   try{
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+GEMINI_KEY,{
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key='+GEMINI_KEY,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
@@ -979,6 +1066,16 @@ function clearBulkSelect(tab){
 /* ────────────────────────────────────────
    DASHBOARD
    ──────────────────────────────────────── */
+function setDashView(v){
+  dashView=v;
+  document.getElementById('dash-table-view').classList.toggle('hidden',v==='group');
+  document.getElementById('dash-group-view').classList.toggle('hidden',v==='table');
+  document.getElementById('btn-view-table').style.background=v==='table'?'#1a3a5c':'transparent';
+  document.getElementById('btn-view-table').style.color=v==='table'?'#4fc3f7':'#666';
+  document.getElementById('btn-view-group').style.background=v==='group'?'#1a3a5c':'transparent';
+  document.getElementById('btn-view-group').style.color=v==='group'?'#4fc3f7':'#666';
+  renderDashboard();
+}
 function sortDash(col){
   if(dashSort.col===col){
     if(dashSort.dir==='asc')dashSort.dir='desc';
@@ -993,7 +1090,6 @@ function sortIcon(col){
 function renderDashboard(){
   let ships=shipments.filter(s=>!isDone(s)&&hasAwb(s));
   const today=new Date(),ts=todayStr();
-  // Default sort by ETA asc
   ships=[...ships].sort((a,b)=>{
     let va=a[dashSort.col]||'',vb=b[dashSort.col]||'';
     if(['ETA','DueDate'].includes(dashSort.col)){va=parseETA(va)||'9999';vb=parseETA(vb)||'9999';}
@@ -1008,6 +1104,13 @@ function renderDashboard(){
     {label:'운송 완료',val:ships.filter(s=>(s.RemarkStatus||'').includes('운송완료')).length,cls:'c-teal'},
   ];
   document.getElementById('dash-cards').innerHTML=cards.map(c=>'<div class="scard"><div class="scard-label">'+c.label+'</div><div class="scard-val '+c.cls+'">'+c.val+'</div></div>').join('');
+
+  if(dashView==='group'){
+    renderDashGroupView(ships);
+    return;
+  }
+
+  // 테이블 뷰
   document.getElementById('dash-thead').innerHTML='<tr>'
     +'<th style="width:32px"></th>'
     +'<th onclick="sortDash(\'Customer\')">Customer'+sortIcon('Customer')+'</th>'
@@ -1018,7 +1121,7 @@ function renderDashboard(){
     +'<th onclick="sortDash(\'Tonnage\')">Tonnage'+sortIcon('Tonnage')+'</th>'
     +'<th onclick="sortDash(\'ETA\')">ETA'+sortIcon('ETA')+'</th>'
     +'<th>Status</th>'
-    +'<th>Delivery</th>'
+    +'<th onclick="sortDash(\'DeliveryDate\')">진행현황'+sortIcon('DeliveryDate')+'</th>'
     +'<th onclick="sortDash(\'DueDate\')">DUE DATE'+sortIcon('DueDate')+'</th>'
     +'<th onclick="sortDash(\'Billing\')">BILLING'+sortIcon('Billing')+'</th>'
     +'</tr>';
@@ -1035,11 +1138,88 @@ function renderDashboard(){
       +'<td data-label="Tonnage">'+(s.Tonnage||'—')+'</td>'
       +'<td data-label="ETA">'+(s.ETA||'—')+'</td>'
       +'<td data-label="Status">'+makeStatusSelect(sid,s.RemarkStatus||'')+'</td>'
-      +'<td data-label="Delivery" style="color:#ffcc80;font-size:12px">'+(s.DeliveryDate||'—')+'</td>'
+      +'<td data-label="진행현황">'+makeProgressCell(sid,s.DeliveryDate||'')+'</td>'
       +'<td data-label="DUE DATE">'+dueBadge(s.DueDate)+'</td>'
       +'<td data-label="BILLING">'+billingBadge(s.Billing)+'</td>'
       +'</tr>';
   }).join('');
+}
+
+/* 진행현황 인라인 편집 */
+function makeProgressCell(shipId, val){
+  const safe=(val||'').replace(/"/g,'&quot;');
+  return'<input class="progress-input" value="'+safe+'" placeholder="진행현황 입력..." onblur="saveProgress(\''+shipId+'\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">';
+}
+async function saveProgress(shipId, val){
+  const s=shipments.find(x=>String(x.id)===String(shipId));
+  if(!s||s.DeliveryDate===val)return;
+  s.DeliveryDate=val;
+  await api({action:'saveShipment',data:JSON.stringify(s),sheet:curSheet});
+}
+
+/* 그룹 뷰 렌더링 */
+let grpCollapsed={};
+function renderDashGroupView(ships){
+  // 그룹 분류
+  const groups={};
+  PROGRESS_GROUPS.forEach(g=>{groups[g.key]=[];});
+  groups['other']=[];
+  groups['empty']=[];
+  ships.forEach(s=>{
+    const k=classifyProgress(s.DeliveryDate);
+    if(!groups[k])groups[k]=[];
+    groups[k].push(s);
+  });
+
+  const grpDefs=[
+    ...PROGRESS_GROUPS,
+    {key:'other',label:'📝 기타',color:'gc-other'},
+    {key:'empty',label:'⬜ 미입력',color:'gc-empty'},
+  ];
+
+  let html='';
+  grpDefs.forEach(gd=>{
+    const list=groups[gd.key]||[];
+    if(!list.length)return;
+    const collapsed=grpCollapsed[gd.key];
+    html+='<div class="grp-block">'
+      +'<div class="grp-hdr '+gd.color+'" onclick="toggleGrp(\''+gd.key+'\')">'
+        +'<span class="grp-hdr-label">'+gd.label+'</span>'
+        +'<span class="grp-cnt">'+list.length+'건</span>'
+        +'<span class="grp-toggle'+(collapsed?' closed':'')+'">▾</span>'
+      +'</div>'
+      +'<div class="grp-body '+gd.color+(collapsed?' hidden':'')+'">'
+        +list.map(s=>{
+          const sid=String(s.id);
+          const safe=(s.DeliveryDate||'').replace(/"/g,'&quot;');
+          return'<div class="grp-row">'
+            +'<div class="grp-cell hawb">'+awbLabel(s)+'</div>'
+            +'<div class="grp-cell customer">'+(s.Customer||'—')+'</div>'
+            +'<div class="grp-cell consignee">'+(s.Consignee||'—')+'</div>'
+            +'<div class="grp-cell progress"><input class="progress-input" value="'+safe+'" placeholder="진행현황..." onblur="saveProgressGrp(\''+sid+'\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
+            +'<div class="grp-cell eta">'+(s.ETA||'—')+'</div>'
+            +'<div class="grp-cell due">'+dueBadge(s.DueDate)+'</div>'
+            +'<div class="grp-cell billing">'+billingBadge(s.Billing)+'</div>'
+            +'<div class="grp-cell action">'+makeStatusSelect(sid,s.RemarkStatus||'')+'</div>'
+            +'</div>';
+        }).join('')
+      +'</div>'
+    +'</div>';
+  });
+  document.getElementById('dash-group-body').innerHTML=html||'<div style="color:#555;padding:20px;text-align:center">진행 중인 화물이 없어요</div>';
+}
+function toggleGrp(key){
+  grpCollapsed[key]=!grpCollapsed[key];
+  renderDashGroupView(shipments.filter(s=>!isDone(s)&&hasAwb(s)));
+}
+async function saveProgressGrp(shipId, val){
+  // 그룹 재렌더 없이 저장만 (입력 포커스 유지)
+  const s=shipments.find(x=>String(x.id)===String(shipId));
+  if(!s||s.DeliveryDate===val)return;
+  s.DeliveryDate=val;
+  await api({action:'saveShipment',data:JSON.stringify(s),sheet:curSheet});
+  // 그룹 재분류만
+  renderDashGroupView(shipments.filter(sx=>!isDone(sx)&&hasAwb(sx)));
 }
 
 /* ────────────────────────────────────────
@@ -1332,6 +1512,7 @@ function dzDrop(e,tab){
   const files=[...e.dataTransfer.files];
   if(!files.length)return;
   if(tab==='register')handleMultiFilesArray(files,'register');
+  else if(tab==='an')handleMultiFilesArray(files,'an');
   else handleSingleFile(files[0],tab);
 }
 
@@ -1368,11 +1549,12 @@ async function handleSingleFile(file,tab){
   if(dz)dz.innerHTML='<div style="padding:16px;text-align:center"><div style="font-size:20px;margin-bottom:8px">📎</div><div style="font-size:13px;color:#ce93d8;font-weight:600">'+file.name+'</div><div style="font-size:11px;color:#555">'+(file.size/1024).toFixed(1)+' KB · 클릭하여 변경</div></div>';
 }
 
-/* ── Multi-file (register) ── */
+/* ── Multi-file (register + AN) ── */
 async function handleMultiFileInput(input,tab){
   handleMultiFilesArray([...input.files],tab);
 }
 async function handleMultiFilesArray(files,tab){
+  const arr=tab==='an'?anFiles:registerFiles;
   for(const file of files){
     const ext=file.name.split('.').pop().toLowerCase();
     const item={file,name:file.name,size:file.size,b64:null,mime:null,text:''};
@@ -1380,10 +1562,20 @@ async function handleMultiFilesArray(files,tab){
     else if(['jpg','jpeg','png'].includes(ext)){item.b64=await fileToBase64(file);item.mime=file.type;}
     else if(ext==='pdf'){item.b64=await fileToBase64(file);item.mime='application/pdf';}
     else{try{item.text=await file.text();}catch(e){}}
-    registerFiles.push(item);
+    arr.push(item);
   }
-  renderRegisterFilePreviews();
+  if(tab==='an')renderAnFilePreviews();
+  else renderRegisterFilePreviews();
 }
+function renderAnFilePreviews(){
+  const container=document.getElementById('an-file-preview');
+  if(!container)return;
+  if(!anFiles.length){container.innerHTML='';return;}
+  container.innerHTML=anFiles.map((f,i)=>'<div class="file-preview-item"><span class="file-preview-name">📎 '+f.name+'</span><span class="file-preview-size">'+(f.size/1024).toFixed(1)+' KB</span><button class="file-preview-remove" onclick="removeAnFile('+i+')">✕</button></div>').join('');
+  const dz=document.getElementById('dz-an');
+  if(dz)dz.innerHTML='<div style="padding:12px 16px;text-align:center"><div style="font-size:14px;margin-bottom:4px">📎 '+anFiles.length+'개 파일 선택됨</div><div style="font-size:11px;color:#555">클릭하여 파일 추가</div></div>';
+}
+function removeAnFile(idx){anFiles.splice(idx,1);renderAnFilePreviews();}
 function renderRegisterFilePreviews(){
   const container=document.getElementById('register-file-preview');
   if(!container)return;
@@ -1517,10 +1709,13 @@ async function registerFromPreview(){
 function selectInco(inco,btn){selectedInco=inco;document.querySelectorAll('.inco-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 async function generateAN(){
   if(!selectedInco){alert('인코텀즈를 선택해주세요');return;}
-  const text=document.getElementById('ta-an').value.trim();
-  const b64s=window['_b64_an']||[];
-  const mimes=window['_mime_an']||[];
-  if(!text&&!b64s.length){alert('서류를 업로드하거나 붙여넣어주세요');return;}
+  const textInput=document.getElementById('ta-an').value.trim();
+  const b64s=anFiles.filter(f=>f.b64).map(f=>f.b64);
+  const mimes=anFiles.filter(f=>f.b64).map(f=>f.mime);
+  const textParts=anFiles.filter(f=>f.text).map(f=>'['+f.name+']\n'+f.text.slice(0,1500));
+  if(textInput)textParts.push(textInput.slice(0,1500));
+  const combinedText=textParts.join('\n\n---\n\n');
+  if(!combinedText&&!b64s.length){alert('서류를 업로드하거나 붙여넣어주세요');return;}
   const anDiv=document.getElementById('an-result'),output=document.getElementById('an-output');
   anDiv.style.display='none';output.textContent='Generating...';
   const incoGuide={
@@ -1553,7 +1748,7 @@ Weight: [값]
 
 감사합니다.
 
-서류 내용: ${text.slice(0,2000)}`;
+서류 내용: ${combinedText}`;
   const res=await gemini(prompt,b64s,mimes,false);
   if(!res)return;
   output.textContent=res;
