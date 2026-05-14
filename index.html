@@ -861,7 +861,7 @@ async function gemini(prompt, b64Array=[], mimes=[], forceJson=false){
   const body={contents:[{parts}]};
   if(forceJson)body.generationConfig={responseMimeType:'application/json'};
   try{
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key='+GEMINI_KEY,{
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key='+GEMINI_KEY,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
