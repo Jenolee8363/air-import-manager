@@ -1716,9 +1716,31 @@ async function generateAN(){
   if(textInput)textParts.push(textInput.slice(0,1500));
   const combinedText=textParts.join('\n\n---\n\n');
   if(!combinedText&&!b64s.length){alert('서류를 업로드하거나 붙여넣어주세요');return;}
+
   const anDiv=document.getElementById('an-result'),output=document.getElementById('an-output');
   anDiv.style.display='block';
-  output.textContent='⏳ AN 작성 중...';
+  output.textContent='⏳ 서류에서 AWB 번호 추출 중...';
+
+  // STEP 1: 서류에서 HAWB/MAWB/Flight 추출
+  const extractPrompt=`아래 서류에서 HAWB 번호, MAWB 번호, Flight 번호만 추출하세요.
+반드시 JSON만 응답: {"hawb":"","mawb":"","flight":""}
+서류: ${combinedText.slice(0,2000)}`;
+  const extractRes=await gemini(extractPrompt,b64s,mimes,true);
+  let hawbDoc='',mawbDoc='',flightDoc='';
+  if(extractRes){
+    try{const e=JSON.parse(extractRes);hawbDoc=e.hawb||'';mawbDoc=e.mawb||'';flightDoc=e.flight||'';}catch(e){}
+  }
+
+  // STEP 2: 구글 시트에서 매칭
+  let matched=null;
+  const normalize=s=>(s||'').replace(/[\s\-]/g,'').toUpperCase();
+  if(hawbDoc){
+    matched=shipments.find(s=>normalize(s.HAWB).includes(normalize(hawbDoc))||normalize(s.MAWB).includes(normalize(hawbDoc)));
+  }
+  if(!matched&&mawbDoc){
+    matched=shipments.find(s=>normalize(s.MAWB).includes(normalize(mawbDoc)));
+  }
+
   const incoGuide={
     EXW:'귀사측에서 수입통관 진행하시어 필증 전달해주시면 운송 진행해드리겠습니다.',
     FCA:'귀사측에서 수입통관 진행하시어 필증 전달해주시면 운송 진행해드리겠습니다.',
@@ -1727,32 +1749,62 @@ async function generateAN(){
     DAP:'DAP 조건으로 수입통관 후 운송 진행 예정이오니 운송지 정보 확인 부탁드립니다.',
     DDP:'DDP 조건으로 수입통관 및 배송까지 진행 예정입니다.'
   };
-  const prompt=`항공화물 서류에서 정보를 추출하여 한국어 Arrival Notice 이메일을 작성해주세요.
-인코텀즈: ${selectedInco}
-안내 문구: "${incoGuide[selectedInco]}"
+
+  // STEP 3: 시트 데이터 or 서류 데이터로 AN 작성
+  let shipInfo='',inco=selectedInco;
+  if(matched){
+    output.textContent='✅ 화물 매칭 완료! AN 작성 중...';
+    inco=matched.ProjectRemark||selectedInco;
+    shipInfo=`[구글 시트 확정 데이터 — 이 값을 그대로 사용]
+Consignee: ${matched.Consignee||''}
+Customer(Shipper): ${matched.Customer||''}
+HAWB: ${matched.HAWB||hawbDoc}
+MAWB: ${matched.MAWB||mawbDoc}
+Route: ${matched.Route||''}
+ETA: ${matched.ETA||''}
+Tonnage: ${matched.Tonnage||''}
+Incoterms: ${inco}
+Flight: ${flightDoc}
+도착지: 인천국제공항 (ICN)`;
+  } else {
+    output.textContent='⚠️ 시트 매칭 안됨 → 서류 기반으로 작성 중...';
+    shipInfo=`[서류 추출 데이터]
+HAWB: ${hawbDoc}
+MAWB: ${mawbDoc}
+Flight: ${flightDoc}
+Incoterms: ${inco}
+도착지: 인천국제공항 (ICN)
+※ 구글 시트에서 화물을 찾지 못했습니다. ETA 등 누락 정보는 직접 확인해주세요.`;
+  }
+
+  const prompt=`아래 화물 정보를 바탕으로 한국어 Arrival Notice 이메일을 작성해주세요.
+인코텀즈: ${inco}
+안내 문구: "${incoGuide[inco]||incoGuide[selectedInco]}"
 
 아래 형식으로 작성:
 안녕하세요 [Consignee]님,
 크레인월드와이드 이지학입니다.
 
-[입항 안내 문장]
+화물이 입항 예정이오니 아래 내용 확인 부탁드립니다.
 
-인코텀즈 ${selectedInco} 조건으로 안내받았습니다.
-${incoGuide[selectedInco]}
+인코텀즈 ${inco} 조건으로 안내받았습니다.
+${incoGuide[inco]||incoGuide[selectedInco]}
 
 Shipment Details
-HAWB : [값]
-MAWB : [값]
-Route : [값]
-ETA  : [값]
-Weight: [값]
+HAWB   : [값]
+MAWB   : [값]
+Route  : [값]
+Flight : [값 없으면 생략]
+ETA    : [값]
+Weight : [Tonnage값] kg
 
 감사합니다.
 
-서류 내용: ${combinedText}`;
-  const res=await gemini(prompt,b64s,mimes,false);
-  if(!res){output.textContent='❌ Gemini 응답 없음. API 키 또는 서류 내용을 확인해주세요.';return;}
-  output.textContent=res;
+${shipInfo}`;
+
+  const res=await gemini(prompt,[],[],false);
+  if(!res){output.textContent='❌ Gemini 응답 없음. API 키를 확인해주세요.';return;}
+  output.textContent=res+(matched?'\n\n✅ 구글 시트 데이터 기반':'\n\n⚠️ 서류 기반 (시트 미매칭)');
   anDiv.style.display='block';
 }
 function copyAN(){
